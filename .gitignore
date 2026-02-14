@@ -1,0 +1,23 @@
+# General
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Python / Backend (relative to root or nested)
+**/__pycache__/
+**/*.py[cod]
+**/venv/
+**/.env
+**/.pytest_cache/
+
+# Node / Frontend (relative to root or nested)
+**/node_modules/
+**/.next/
+**/out/
+**/build/
+**/coverage/
+
+# Misc
+infra/.terraform/
+*.swp
