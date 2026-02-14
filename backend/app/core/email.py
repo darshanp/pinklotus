@@ -39,5 +39,5 @@ def send_verification_email(to_email: str, token: str):
 
     except Exception as e:
         print(f"Failed to send email to {to_email}: {str(e)}")
-        # Don't crash the app if email fails, but log it
+        print(f"[FALLBACK LOG] To: {to_email} | Link: {verify_url}")
         return None
