@@ -1,10 +1,16 @@
 fastapi
 uvicorn
-pydantic
 sqlalchemy
+psycopg2-binary
 alembic
 asyncpg
-python-dotenv
-psycopg2-binary
-pytest
 httpx
+pydantic
+python-dotenv
+sentry-sdk
+
+# Dev dependencies
+pytest
+ruff
+black
+mypy
