@@ -7,12 +7,13 @@ load_dotenv()
 resend.api_key = os.getenv("EMAIL_API_KEY")
 EMAIL_SENDER = os.getenv("EMAIL_SENDER", "onboarding@resend.dev")
 
+
 def send_verification_email(to_email: str, token: str):
     """
     Sends a verification email using Resend.
     """
     verify_url = f"http://localhost:3000/verify-email?token={token}"
-    
+
     subject = "Verify your Blossom Retreat Account"
     html_content = f"""
     <p>Welcome to Blossom Retreat Platform!</p>
@@ -23,7 +24,9 @@ def send_verification_email(to_email: str, token: str):
 
     try:
         if not resend.api_key:
-            print(f"[MOCK EMAIL] To: {to_email} | Subject: {subject} | Link: {verify_url}")
+            print(
+                f"[MOCK EMAIL] To: {to_email} | Subject: {subject} | Link: {verify_url}"
+            )
             return {"id": "mock-id"}
 
         params = {

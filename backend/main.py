@@ -10,7 +10,12 @@ load_dotenv()
 app = FastAPI(title="Blossom Foundation Retreat Platform API")
 
 # CORS Configuration
-origins = os.getenv("BACKEND_CORS_ORIGINS", '["http://localhost:3000"]').strip('[]').replace('"', '').split(',')
+origins = (
+    os.getenv("BACKEND_CORS_ORIGINS", '["http://localhost:3000"]')
+    .strip("[]")
+    .replace('"', "")
+    .split(",")
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,9 +27,11 @@ app.add_middleware(
 
 app.include_router(auth.router)
 
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Blossom Foundation Retreat Platform API"}
+
 
 @app.get("/health")
 async def health_check():

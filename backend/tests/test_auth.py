@@ -1,11 +1,15 @@
+from pathlib import Path
+import sys
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
 from app.database import Base, get_db
 from main import app
-import pytest
 
 # Setup in-memory SQLite for testing
 SQLALCHEMY_DATABASE_URL = "sqlite://"
@@ -19,6 +23,7 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 Base.metadata.create_all(bind=engine)
 
+
 def override_get_db():
     try:
         db = TestingSessionLocal()
@@ -26,9 +31,11 @@ def override_get_db():
     finally:
         db.close()
 
+
 app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
+
 
 def test_register_user():
     response = client.post(
@@ -37,7 +44,7 @@ def test_register_user():
             "email": "test@example.com",
             "password": "strongpassword123",
             "first_name": "Test",
-            "last_name": "User"
+            "last_name": "User",
         },
     )
     assert response.status_code == 200
@@ -50,56 +57,55 @@ def test_register_user():
     # Try duplicate registration
     response = client.post(
         "/auth/register",
-        json={
-            "email": "test@example.com",
-            "password": "strongpassword123"
-        },
+        json={"email": "test@example.com", "password": "strongpassword123"},
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Email already registered"
+
 
 def test_login_and_me():
     # Login
     response = client.post(
         "/auth/login",
-        json={
-            "email": "test@example.com",
-            "password": "strongpassword123"
-        },
+        json={"email": "test@example.com", "password": "strongpassword123"},
     )
     assert response.status_code == 200
     token = response.json()["access_token"]
-    
+
     # Get Me
-    response = client.get(
-        "/auth/me",
-        headers={"Authorization": f"Bearer {token}"}
-    )
+    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     assert response.json()["email"] == "test@example.com"
+
 
 def test_verify_email():
     # We need a token. Let's cheat and generate one or register a user and intercept...
     # Actually, simpler is to just generate one using the security module since we have the secret key in env (loaded by app)
     from app.core import security
     from datetime import timedelta
-    
-    token = security.create_access_token(subject="test@example.com", expires_delta=timedelta(hours=1))
-    
+
+    token = security.create_access_token(
+        subject="test@example.com", expires_delta=timedelta(hours=1)
+    )
+
     response = client.post(f"/auth/verify-email?token={token}")
     assert response.status_code == 200
     assert response.json()["message"] == "Email verified successfully"
-    
+
     # Check if verified
     # Login again to check verification status (need to inspect response or DB)
     # The 'me' endpoint returns is_verified
-    
+
     # Login
-    login_res = client.post("/auth/login", json={"email": "test@example.com", "password": "strongpassword123"})
+    login_res = client.post(
+        "/auth/login",
+        json={"email": "test@example.com", "password": "strongpassword123"},
+    )
     token_str = login_res.json()["access_token"]
-    
+
     me_res = client.get("/auth/me", headers={"Authorization": f"Bearer {token_str}"})
     assert me_res.json()["is_verified"] is True
+
 
 def test_verified_route_requires_verified_email():
     client.post(
@@ -108,20 +114,27 @@ def test_verified_route_requires_verified_email():
             "email": "verified@example.com",
             "password": "strongpassword123",
             "first_name": "Verified",
-            "last_name": "User"
+            "last_name": "User",
         },
     )
 
     from app.core import security
     from datetime import timedelta
 
-    verified_token = security.create_access_token(subject="verified@example.com", expires_delta=timedelta(hours=1))
+    verified_token = security.create_access_token(
+        subject="verified@example.com", expires_delta=timedelta(hours=1)
+    )
     client.post(f"/auth/verify-email?token={verified_token}")
 
-    login_res = client.post("/auth/login", json={"email": "verified@example.com", "password": "strongpassword123"})
+    login_res = client.post(
+        "/auth/login",
+        json={"email": "verified@example.com", "password": "strongpassword123"},
+    )
     token = login_res.json()["access_token"]
 
-    response = client.get("/auth/me/verified", headers={"Authorization": f"Bearer {token}"})
+    response = client.get(
+        "/auth/me/verified", headers={"Authorization": f"Bearer {token}"}
+    )
     assert response.status_code == 200
     assert response.json()["email"] == "verified@example.com"
 
@@ -131,15 +144,21 @@ def test_verified_route_requires_verified_email():
             "email": "pending@example.com",
             "password": "strongpassword123",
             "first_name": "Pending",
-            "last_name": "User"
+            "last_name": "User",
         },
     )
-    pending_login = client.post("/auth/login", json={"email": "pending@example.com", "password": "strongpassword123"})
+    pending_login = client.post(
+        "/auth/login",
+        json={"email": "pending@example.com", "password": "strongpassword123"},
+    )
     pending_token = pending_login.json()["access_token"]
 
-    blocked = client.get("/auth/me/verified", headers={"Authorization": f"Bearer {pending_token}"})
+    blocked = client.get(
+        "/auth/me/verified", headers={"Authorization": f"Bearer {pending_token}"}
+    )
     assert blocked.status_code == 403
     assert blocked.json()["detail"] == "Email verification required"
+
 
 def test_resend_verification_email():
     client.post(
@@ -148,13 +167,18 @@ def test_resend_verification_email():
             "email": "resend@example.com",
             "password": "strongpassword123",
             "first_name": "Resend",
-            "last_name": "User"
+            "last_name": "User",
         },
     )
 
-    login_res = client.post("/auth/login", json={"email": "resend@example.com", "password": "strongpassword123"})
+    login_res = client.post(
+        "/auth/login",
+        json={"email": "resend@example.com", "password": "strongpassword123"},
+    )
     token = login_res.json()["access_token"]
 
-    response = client.post("/auth/resend-verification", headers={"Authorization": f"Bearer {token}"})
+    response = client.post(
+        "/auth/resend-verification", headers={"Authorization": f"Bearer {token}"}
+    )
     assert response.status_code == 200
     assert response.json()["message"] == "Verification email sent"

@@ -9,7 +9,7 @@ import sys
 from dotenv import load_dotenv
 
 # Add the backend directory to sys.path so we can import app
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 load_dotenv()
 
@@ -24,7 +24,8 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from app.models import Base
+from app.models import Base  # noqa: E402
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -32,8 +33,10 @@ target_metadata = Base.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
+
 def get_url():
     return os.getenv("DATABASE_URL")
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -75,9 +78,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
