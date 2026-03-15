@@ -13,6 +13,39 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
+def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Session = Depends(get_db),
+):
+    try:
+        payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
+
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
+
+def get_current_verified_user(
+    current_user: models.User = Depends(get_current_user),
+):
+    if not current_user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email verification required",
+        )
+    return current_user
+
 @router.post("/register", response_model=schemas.UserResponse)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
@@ -90,20 +123,28 @@ def login(user_credentials: schemas.UserLogin, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=schemas.UserResponse)
-def read_users_me(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
-    try:
-        payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
-        token_data = schemas.TokenData(email=email)
-    except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
-    
-    user = db.query(models.User).filter(models.User.email == token_data.email).first()
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user
+def read_users_me(current_user: models.User = Depends(get_current_user)):
+    return current_user
+
+@router.get("/me/verified", response_model=schemas.UserResponse)
+def read_verified_user(current_user: models.User = Depends(get_current_verified_user)):
+    return current_user
+
+@router.post("/resend-verification", response_model=schemas.MessageResponse)
+def resend_verification_email(
+    current_user: models.User = Depends(get_current_user),
+):
+    if current_user.is_verified:
+        return {"message": "Email already verified"}
+
+    verification_token = security.create_access_token(
+        subject=current_user.email, expires_delta=timedelta(hours=24)
+    )
+
+    from app.core import email
+
+    email.send_verification_email(current_user.email, verification_token)
+    return {"message": "Verification email sent"}
 
 @router.post("/verify-email")
 def verify_email(token: str, db: Session = Depends(get_db)):

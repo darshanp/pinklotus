@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { AxiosError } from 'axios';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 
@@ -22,18 +23,13 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-    const router = useRouter();
     const searchParams = useSearchParams();
     const { login } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (searchParams.get('registered')) {
-            setSuccess('Registration successful! Please check your email to verify your account.');
-        }
-    }, [searchParams]);
+    const success = searchParams.get('registered')
+        ? 'Registration successful! Please check your email to verify your account.'
+        : null;
 
     const {
         register,
@@ -47,12 +43,14 @@ export default function LoginPage() {
         setIsLoading(true);
         setError(null);
         try {
-            // Use the JSON login endpoint in backend
             const response = await api.post('/auth/login', data);
             login(response.data.access_token);
-            // login() handles redirection
-        } catch (err: any) {
-            setError(err.response?.data?.detail || 'Invalid email or password');
+        } catch (err) {
+            const message =
+                err instanceof AxiosError
+                    ? err.response?.data?.detail
+                    : null;
+            setError(message || 'Invalid email or password');
             setIsLoading(false);
         }
     };

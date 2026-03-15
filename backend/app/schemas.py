@@ -19,6 +19,9 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     email: Optional[str] = None
 
+class MessageResponse(BaseModel):
+    message: str
+
 class UserResponse(UserBase):
     id: int
     is_active: bool

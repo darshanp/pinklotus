@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { AxiosError } from 'axios';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
@@ -40,12 +41,13 @@ export default function RegisterPage() {
         setError(null);
         try {
             await api.post('/auth/register', data);
-            // Determine flow: verify email is next
-            // We could show a success message or redirect to a verification instruction page
-            // For now, let's redirect to login with a query param or a dedicated check-email page
             router.push('/login?registered=true');
-        } catch (err: any) {
-            setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+        } catch (err) {
+            const message =
+                err instanceof AxiosError
+                    ? err.response?.data?.detail
+                    : null;
+            setError(message || 'Registration failed. Please try again.');
         } finally {
             setIsLoading(false);
         }

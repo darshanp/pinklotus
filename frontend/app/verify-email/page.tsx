@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { AxiosError } from 'axios';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import api from '@/lib/api';
@@ -9,20 +10,19 @@ import { Button } from '@/components/ui/button';
 
 export default function VerifyEmailPage() {
     const searchParams = useSearchParams();
-    const router = useRouter();
     const token = searchParams.get('token');
-    const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-    const [message, setMessage] = useState('Verifying your email...');
+    const [status, setStatus] = useState<'loading' | 'success' | 'error'>(token ? 'loading' : 'error');
+    const [message, setMessage] = useState(
+        token ? 'Verifying your email...' : 'Invalid verification link. Token is missing.'
+    );
     const effectRan = useRef(false);
 
     useEffect(() => {
-        if (effectRan.current) return;
-
         if (!token) {
-            setStatus('error');
-            setMessage('Invalid verification link. Token is missing.');
             return;
         }
+
+        if (effectRan.current) return;
 
         const verify = async () => {
             effectRan.current = true;
@@ -30,9 +30,13 @@ export default function VerifyEmailPage() {
                 await api.post(`/auth/verify-email?token=${token}`);
                 setStatus('success');
                 setMessage('Your email has been successfully verified!');
-            } catch (error: any) {
+            } catch (error) {
+                const errorMessage =
+                    error instanceof AxiosError
+                        ? error.response?.data?.detail
+                        : null;
                 setStatus('error');
-                setMessage(error.response?.data?.detail || 'Verification failed. The link may be expired.');
+                setMessage(errorMessage || 'Verification failed. The link may be expired.');
             }
         };
 

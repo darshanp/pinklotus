@@ -22,6 +22,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
 
+    const logout = () => {
+        localStorage.removeItem('access_token');
+        setUser(null);
+        router.push('/login');
+    };
+
     const refreshUser = async () => {
         try {
             const response = await api.get('/auth/me');
@@ -37,9 +43,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const token = localStorage.getItem('access_token');
             if (token) {
                 try {
-                    await refreshUser();
-                } catch (error) {
-                    // Token invalid or expired
+                    const response = await api.get('/auth/me');
+                    setUser(response.data);
+                } catch {
                     localStorage.removeItem('access_token');
                 }
             }
@@ -49,18 +55,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         initAuth();
     }, []);
 
+    useEffect(() => {
+        if (isLoading || !user) {
+            return;
+        }
+
+        if (!user.is_verified && pathname === '/dashboard') {
+            router.replace('/verify-email-pending');
+        }
+    }, [isLoading, pathname, router, user]);
+
     const login = (token: string) => {
         localStorage.setItem('access_token', token);
         refreshUser().then(() => {
-            // Redirect to dashboard or home after login
             router.push('/dashboard');
         });
-    };
-
-    const logout = () => {
-        localStorage.removeItem('access_token');
-        setUser(null);
-        router.push('/login');
     };
 
     return (
